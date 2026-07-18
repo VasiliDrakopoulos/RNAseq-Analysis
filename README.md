@@ -1,6 +1,6 @@
 # RNAseq-Analysis
 
-**PLEASE** download word file in repository for correctly formatted instructions
+****PLEASE** download word file in repository for correctly formatted instructions**
 
 Entire pipeline for RNAseq analysis
 FOR WINDOWS, follow each step carefully as presented
