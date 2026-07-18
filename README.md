@@ -19,13 +19,13 @@ conda activate rna_env
 
 Then copy each of these one at a time as it will need to download it, so may take a bit.
 
-# HISAT2 index (GRCm38 / mm10)
+   HISAT2 index (GRCm38 / mm10)
 mkdir -p ~/mouse_hisat2_index
 cd ~/mouse_hisat2_index
 wget https://cloud.biohpc.swmed.edu/index.php/s/grcm38_tran/download -O grcm38_tran.tar.gz
 tar -xzf grcm38_tran.tar.gz
 
-# Gene annotation GTF
+   Gene annotation GTF
 mkdir -p ~/mouse_reference
 cd ~/mouse_reference
 wget ftp://ftp.ensembl.org/pub/release-102/gtf/mus_musculus/Mus_musculus.GRCm38.102.gtf.gz
@@ -79,7 +79,7 @@ Now use your real folder names for each sample and then after the colon put the 
 13.	Now you can copy your full gene counts.csv to a directory on your pc of your liking by running this command (this will go to my documents foldier but change accordingly):
 cp ~/final_results/full_gene_counts.csv /mnt/c/Users/vasil/Documents/
 
-Differential expression analysis in anaconda prompt on Windows
+**Differential expression analysis in anaconda prompt on Windows**
 1.	Open anaconda prompt and create a new environment and install dependencies as below:
 conda create -n de_analysis -c conda-forge -y python=3.10 pandas numpy
 conda activate de_analysis
@@ -95,7 +95,7 @@ contrast = ("condition", "male", "female")
 cd  (your file directory with the script)
 python de_analysis.py
 
-For analysis run Analysis.py, for matplotlib figures of volcano plots, and heatmaps.
+**For analysis run Analysis.py, for matplotlib figures of volcano plots, and heatmaps.**
 For analysis, you will need your deseq2_results.csv, full_gene_counts.csv, and metadata.csv.
 Volcano plot
 -Can specific two-tiers of significance and log2foldchange if needed
