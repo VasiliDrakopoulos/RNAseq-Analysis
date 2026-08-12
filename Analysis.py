@@ -12,7 +12,7 @@ from scipy.cluster.hierarchy import linkage, leaves_list
 warnings.filterwarnings('ignore', category=pd.errors.SettingWithCopyWarning)
 
 
-# Helper: log2(CPM+1) normalisation
+# log2(CPM+1) normalisation
 def log2_cpm(counts_df):
     counts = counts_df.copy()
     gene_col = None
@@ -207,17 +207,25 @@ class RNAAnalysisGUI:
         self.volcano_title = tk.StringVar(value="Volcano Plot")
         tk.Entry(ctrl, textvariable=self.volcano_title, width=25).pack(anchor='w')
 
+        # ---- Font controls (size & bold) ----
         tk.Label(ctrl, text="Title font size:").pack(anchor='w', pady=(5,0))
         self.volcano_title_font = tk.StringVar(value="14")
         tk.Entry(ctrl, textvariable=self.volcano_title_font, width=6).pack(anchor='w')
+        self.volcano_title_bold = tk.BooleanVar(value=False)
+        tk.Checkbutton(ctrl, text="Bold title", variable=self.volcano_title_bold).pack(anchor='w')
 
         tk.Label(ctrl, text="Axis label font size:").pack(anchor='w', pady=(5,0))
         self.volcano_axis_label_font = tk.StringVar(value="12")
         tk.Entry(ctrl, textvariable=self.volcano_axis_label_font, width=6).pack(anchor='w')
+        self.volcano_axis_label_bold = tk.BooleanVar(value=False)
+        tk.Checkbutton(ctrl, text="Bold axis labels", variable=self.volcano_axis_label_bold).pack(anchor='w')
 
         tk.Label(ctrl, text="Tick label font size:").pack(anchor='w', pady=(5,0))
         self.volcano_tick_font = tk.StringVar(value="10")
         tk.Entry(ctrl, textvariable=self.volcano_tick_font, width=6).pack(anchor='w')
+        self.volcano_tick_label_bold = tk.BooleanVar(value=False)
+        tk.Checkbutton(ctrl, text="Bold tick labels", variable=self.volcano_tick_label_bold).pack(anchor='w')
+        # ---- end font controls ----
 
         tk.Label(ctrl, text="Figure width, height:").pack(anchor='w', pady=(5,0))
         self.volcano_figsize = tk.StringVar(value="10,7")
@@ -298,6 +306,10 @@ class RNAAnalysisGUI:
             title_fs = safe_int(self.volcano_title_font, 14)
             label_fs = safe_int(self.volcano_axis_label_font, 12)
             tick_fs = safe_int(self.volcano_tick_font, 10)
+            title_bold = self.volcano_title_bold.get()
+            axis_bold = self.volcano_axis_label_bold.get()
+            tick_bold = self.volcano_tick_label_bold.get()
+
             try:
                 w, h = map(float, self.volcano_figsize.get().split(','))
             except:
@@ -430,11 +442,15 @@ class RNAAnalysisGUI:
                 ax.axvline(-lfc_cut1, linestyle='--', color='k', alpha=0.3)
                 ax.axvline(lfc_cut1, linestyle='--', color='k', alpha=0.3)
 
-            ax.set_xlabel('log2 Fold Change', fontsize=label_fs)
-            ax.set_ylabel('-log10 adjusted p-value', fontsize=label_fs)
+            # Apply font styles
+            ax.set_xlabel('log2 Fold Change', fontsize=label_fs, weight='bold' if axis_bold else 'normal')
+            ax.set_ylabel('-log10 adjusted p-value', fontsize=label_fs, weight='bold' if axis_bold else 'normal')
             if title:
-                ax.set_title(title, fontsize=title_fs)
+                ax.set_title(title, fontsize=title_fs, weight='bold' if title_bold else 'normal')
             ax.tick_params(labelsize=tick_fs)
+            for label in ax.get_xticklabels() + ax.get_yticklabels():
+                label.set_weight('bold' if tick_bold else 'normal')
+
             ax.legend(fontsize=tick_fs-1, loc='best')
             sns.despine()
 
@@ -455,7 +471,8 @@ class RNAAnalysisGUI:
                                       bbox=dict(boxstyle='round,pad=0.2', fc='yellow', alpha=0.3))
                         texts.append(txt)
                     adjust_text(texts, ax=ax, expand_points=(expand_factor, expand_factor),
-                                arrowprops=dict(arrowstyle='->', color='red', lw=0.5))
+                                arrowprops=dict(arrowstyle='->', color='red', lw=0.5,
+                                                shrinkA=5, shrinkB=5))
                     for txt in texts:
                         x, y = txt.get_position()
                         txt.set_position((x + offset_x, y + offset_y))
@@ -477,13 +494,26 @@ class RNAAnalysisGUI:
             import traceback
             traceback.print_exc()
 
-    # Heatmap Tab
+    # Heatmap Tab 
     def build_heatmap_tab(self):
         main_pane = ttk.PanedWindow(self.tab_heatmap, orient=tk.HORIZONTAL)
         main_pane.pack(fill=tk.BOTH, expand=True)
-        ctrl = tk.Frame(main_pane)
-        main_pane.add(ctrl, weight=1)
+        ctrl_frame = tk.Frame(main_pane)
+        main_pane.add(ctrl_frame, weight=1)
+        control_canvas = tk.Canvas(ctrl_frame, width=320)
+        scrollbar = ttk.Scrollbar(ctrl_frame, orient="vertical", command=control_canvas.yview)
+        scrollable_frame = ttk.Frame(control_canvas)
+        scrollable_frame.bind("<Configure>", lambda e: control_canvas.configure(scrollregion=control_canvas.bbox("all")))
+        control_canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        control_canvas.configure(yscrollcommand=scrollbar.set)
+        control_canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        self._build_heatmap_controls(scrollable_frame)
+        self.heatmap_canvas_frame = tk.Frame(main_pane)
+        main_pane.add(self.heatmap_canvas_frame, weight=3)
 
+    def _build_heatmap_controls(self, parent):
+        ctrl = parent
         tk.Label(ctrl, text="Heatmap Options", font=('Arial', 12, 'bold')).pack(pady=5)
 
         tk.Label(ctrl, text="Number of top genes (single mode):").pack(anchor='w')
@@ -529,13 +559,32 @@ class RNAAnalysisGUI:
         self.heatmap_cluster_cols = tk.BooleanVar(value=True)
         tk.Checkbutton(ctrl, text="Cluster columns?", variable=self.heatmap_cluster_cols).pack(anchor='w')
 
+        # Font controls for heatmap
         tk.Label(ctrl, text="Title font size:").pack(anchor='w')
         self.heatmap_title_font = tk.IntVar(value=14)
         tk.Entry(ctrl, textvariable=self.heatmap_title_font, width=6).pack(anchor='w')
+        self.heatmap_title_bold = tk.BooleanVar(value=False)
+        tk.Checkbutton(ctrl, text="Bold title", variable=self.heatmap_title_bold).pack(anchor='w')
+
+        tk.Label(ctrl, text="Axis label font size:").pack(anchor='w')
+        self.heatmap_axis_label_font = tk.IntVar(value=12)
+        tk.Entry(ctrl, textvariable=self.heatmap_axis_label_font, width=6).pack(anchor='w')
+        self.heatmap_axis_label_bold = tk.BooleanVar(value=False)
+        tk.Checkbutton(ctrl, text="Bold axis labels", variable=self.heatmap_axis_label_bold).pack(anchor='w')
 
         tk.Label(ctrl, text="Tick label font size:").pack(anchor='w')
         self.heatmap_tick_font = tk.IntVar(value=10)
         tk.Entry(ctrl, textvariable=self.heatmap_tick_font, width=6).pack(anchor='w')
+        self.heatmap_tick_label_bold = tk.BooleanVar(value=False)
+        tk.Checkbutton(ctrl, text="Bold tick labels", variable=self.heatmap_tick_label_bold).pack(anchor='w')
+
+        # ---- NEW: Colorbar label font controls ----
+        tk.Label(ctrl, text="Colorbar label font size:").pack(anchor='w')
+        self.heatmap_cbar_label_font = tk.IntVar(value=10)
+        tk.Entry(ctrl, textvariable=self.heatmap_cbar_label_font, width=6).pack(anchor='w')
+        self.heatmap_cbar_label_bold = tk.BooleanVar(value=False)
+        tk.Checkbutton(ctrl, text="Bold colorbar label", variable=self.heatmap_cbar_label_bold).pack(anchor='w')
+        # ---- end font controls ----
 
         tk.Label(ctrl, text="Figure width, height:").pack(anchor='w')
         self.heatmap_figsize = tk.StringVar(value="10,6")
@@ -549,10 +598,10 @@ class RNAAnalysisGUI:
         tk.Button(group_frame, text="Browse", command=self.load_group_file, bg='lightgray').pack(side=tk.LEFT, padx=5)
         tk.Label(ctrl, text="(If loaded, single‑mode options above are ignored)", font=('Arial', 8)).pack(anchor='w')
 
-        tk.Button(ctrl, text="Generate Heatmap", command=self.plot_heatmap, bg='lightblue').pack(pady=10)
-        tk.Button(ctrl, text="Save Figure", command=lambda: self.save_figure("heatmap"), bg='lightgreen').pack(pady=5)
-        self.heatmap_canvas_frame = tk.Frame(main_pane)
-        main_pane.add(self.heatmap_canvas_frame, weight=3)
+        tk.Button(ctrl, text="Generate Heatmap", command=self.plot_heatmap,
+                  bg='lightblue', font=('Arial', 10, 'bold')).pack(pady=10)
+        tk.Button(ctrl, text="Save Figure", command=lambda: self.save_figure("heatmap"),
+                  bg='lightgreen', font=('Arial', 10, 'bold')).pack(pady=5)
 
     def update_metadata_dropdowns(self):
         if self.metadata_df is None:
@@ -638,7 +687,15 @@ class RNAAnalysisGUI:
             if self.counts_norm is None:
                 self.counts_norm = log2_cpm(self.counts_raw)
 
-            # Multi‑block heatmap (group file)
+            title_fs = safe_intvar(self.heatmap_title_font, 14)
+            axis_fs = safe_intvar(self.heatmap_axis_label_font, 12)
+            tick_fs = safe_intvar(self.heatmap_tick_font, 10)
+            cbar_label_fs = safe_intvar(self.heatmap_cbar_label_font, 10)
+            title_bold = self.heatmap_title_bold.get()
+            axis_bold = self.heatmap_axis_label_bold.get()
+            tick_bold = self.heatmap_tick_label_bold.get()
+            cbar_label_bold = self.heatmap_cbar_label_bold.get()
+
             if self.group_df is not None:
                 group_map = {}
                 groups_order = []
@@ -719,7 +776,6 @@ class RNAAnalysisGUI:
                 else:
                     cmaps = cmaps[:n_groups]
 
-                tick_fs = safe_intvar(self.heatmap_tick_font, 10)
                 rename_dict = {}
                 rename_str = self.heatmap_rename_genes.get().strip()
                 if rename_str:
@@ -747,11 +803,18 @@ class RNAAnalysisGUI:
                                 xticklabels=False,
                                 yticklabels=y_labels,
                                 cbar_kws={'label': f'Z-score ({group_name})'})
-                    ax.set_ylabel(group_name, fontsize=tick_fs+2, weight='bold')
+                    ax.set_ylabel(group_name, fontsize=axis_fs, weight='bold' if axis_bold else 'normal')
                     ax.tick_params(labelsize=tick_fs)
+                    for label in ax.get_xticklabels() + ax.get_yticklabels():
+                        label.set_weight('bold' if tick_bold else 'normal')
                     if ax != axes[-1]:
                         ax.set_xlabel('')
                     ax.set_xlim(-0.5, n_cols - 0.5)
+
+                    cbar = ax.collections[0].colorbar
+                    if cbar:
+                        cbar.ax.set_ylabel(cbar.ax.get_ylabel(), fontsize=cbar_label_fs,
+                                           weight='bold' if cbar_label_bold else 'normal')
 
                 bottom_ax = axes[-1]
                 if group_info is not None:
@@ -760,9 +823,8 @@ class RNAAnalysisGUI:
                         mid = (start + end) / 2
                         x_frac = (mid + 0.5) / n_cols
                         bottom_ax.text(x_frac, -0.02, label, ha='center', va='top',
-                                       fontsize=tick_fs+1, weight='bold', transform=bottom_ax.transAxes)
+                                       fontsize=tick_fs+1, weight='bold' if axis_bold else 'normal', transform=bottom_ax.transAxes)
 
-                    # Draw dotted lines at group boundaries: offset +1.0 (right edge of last sample)
                     for start, end, _ in group_info[:-1]:
                         x_pos = end + 1.0
                         for ax in axes:
@@ -772,7 +834,7 @@ class RNAAnalysisGUI:
                     bottom_ax.set_xticks(np.arange(n_cols) + 0.5)
                     bottom_ax.set_xticklabels(col_labels, rotation=45, ha='right', fontsize=tick_fs)
 
-                fig.suptitle(self.heatmap_title.get(), fontsize=safe_intvar(self.heatmap_title_font, 14))
+                fig.suptitle(self.heatmap_title.get(), fontsize=title_fs, weight='bold' if title_bold else 'normal')
                 plt.tight_layout()
                 self.display_figure(fig, self.heatmap_canvas_frame)
                 return
@@ -844,7 +906,6 @@ class RNAAnalysisGUI:
                     col_labels = mat_scaled.columns.tolist()
 
             fig, ax = plt.subplots(figsize=(w, h))
-            tick_fs = safe_intvar(self.heatmap_tick_font, 10)
 
             if group_info is not None:
                 sns.heatmap(mat_scaled, cmap=self.heatmap_cmap.get(), cbar=True, ax=ax,
@@ -857,7 +918,7 @@ class RNAAnalysisGUI:
                     mid = (start + end) / 2
                     x_frac = (mid + 0.5) / n_cols
                     ax.text(x_frac, -0.02, label, ha='center', va='top',
-                            fontsize=tick_fs+1, weight='bold', transform=ax.transAxes)
+                            fontsize=tick_fs+1, weight='bold' if axis_bold else 'normal', transform=ax.transAxes)
                 for start, end, _ in group_info[:-1]:
                     x_pos = end + 1.0 
                     ax.axvline(x_pos, color='black', linestyle=':', linewidth=1.5, alpha=0.8, zorder=10)
@@ -868,9 +929,16 @@ class RNAAnalysisGUI:
                             cbar_kws={'label': 'Z-score'})
                 ax.set_xticklabels(col_labels, rotation=45, ha='right', fontsize=tick_fs)
 
-            ax.set_title(self.heatmap_title.get(), fontsize=safe_intvar(self.heatmap_title_font, 14))
+            cbar = ax.collections[0].colorbar
+            if cbar:
+                cbar.ax.set_ylabel(cbar.ax.get_ylabel(), fontsize=cbar_label_fs,
+                                   weight='bold' if cbar_label_bold else 'normal')
+
+            ax.set_title(self.heatmap_title.get(), fontsize=title_fs, weight='bold' if title_bold else 'normal')
             ax.tick_params(labelsize=tick_fs)
-            ax.set_ylabel('Genes', fontsize=tick_fs+2)
+            for label in ax.get_xticklabels() + ax.get_yticklabels():
+                label.set_weight('bold' if tick_bold else 'normal')
+            ax.set_ylabel('Genes', fontsize=axis_fs, weight='bold' if axis_bold else 'normal')
 
             plt.tight_layout()
             self.display_figure(fig, self.heatmap_canvas_frame)
@@ -880,7 +948,6 @@ class RNAAnalysisGUI:
             import traceback
             traceback.print_exc()
 
-    # About Tab
     def build_about_tab(self):
         frame = self.tab_about
         tk.Label(frame, text="RNA-seq Analysis Figure Generator", font=('Arial', 14, 'bold')).pack(pady=10)
