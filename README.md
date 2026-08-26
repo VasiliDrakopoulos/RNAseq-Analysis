@@ -1,20 +1,17 @@
-# RNAseq-Analysis
-
-****PLEASE** download word file in repository for correctly formatted instructions**
-
-Entire pipeline for RNAseq analysis
 FOR WINDOWS, follow each step carefully as presented
 
 1.	Open windows powershell with admin permissions and type:
 wsl --install
 2.	Restart your computer when prompted (this will install a linux distribution on your computer.
-3.	Open the ubuntu app and create a username and password
-4.	Inside the ubuntu terminal run these commands to install miniconda for linux.
-wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+3.	Download and open the ubuntu app (just search and download ubuntu from google) and create a username and password
+a.	When you make your password it’s secret so you can’t see it typed on the screen.
+4.	Run these commands to install miniconda for linux.
+a.	You need to use Ctrl + shift + v to paste and then enter to run.
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh (if you get an error or failed after this command it means it’s a differed version for your computer)
 bash miniconda.sh
 
 During this you would need to type yes a bunch of times. After this is done close and re-open ubuntu.
-5.	Copy this into ubuntu:
+5.	Copy this into ubuntu (if it doesn’t work because terms of service have not been accepted: simply copy the 2 commands it gives you to accept these terms):
 conda create -n rna_env -c bioconda -c conda-forge -y \
 cutadapt hisat2 samtools subread fastqc multiqc \
 python=3.10 pandas matplotlib seaborn scikit-learn
@@ -22,13 +19,13 @@ conda activate rna_env
 
 Then copy each of these one at a time as it will need to download it, so may take a bit.
 
-   HISAT2 index (GRCm38 / mm10)
+# HISAT2 index (GRCm38 / mm10)
 mkdir -p ~/mouse_hisat2_index
 cd ~/mouse_hisat2_index
 wget https://cloud.biohpc.swmed.edu/index.php/s/grcm38_tran/download -O grcm38_tran.tar.gz
 tar -xzf grcm38_tran.tar.gz
 
-   Gene annotation GTF
+# Gene annotation GTF
 mkdir -p ~/mouse_reference
 cd ~/mouse_reference
 wget ftp://ftp.ensembl.org/pub/release-102/gtf/mus_musculus/Mus_musculus.GRCm38.102.gtf.gz
@@ -50,9 +47,12 @@ nano ~/run_full_gene_pipeline.py
 │   ├── sample5_R1.fastq.gz
 │   └── sample5_R2.fastq.gz
 
-9.	Copy this command to of the file directory in the ubuntu terminal (I have bolded my file directory from c drive): cp -r /mnt/c/Users/vasil/Documents/PFC-LH_TRAP ~/PFC-LH_TRAP
-10.	Then we will need to rename and compress files in that folder with this code (please rename accordingly the first line:
-cd ~/PFC-LH_TRAP
+Copy this command to of the file directory in the ubuntu terminal (I have bolded my file directory from c drive): cp -r /mnt/c/Users/….
+
+(Change from Users onwards to your directory)
+
+Then we will need to rename and compress files in that folder with this code (please rename accordingly the first line to the last folder of the directory:
+cd ~/…..
 for d in */; do
 cd "$d"
 for f in *_1.fq; do mv "$f" "${f%_1.fq}_R1.fq"; done
@@ -60,29 +60,35 @@ for f in *_2.fq; do mv "$f" "${f%_2.fq}_R2.fq"; done
 gzip *.fq
 cd ..
 done
-11.	Now run the pipeline (keep in mind this might take a while):
+9.	Now run the pipeline (keep in mind this might take a while):
 python ~/run_full_gene_pipeline.py
-12.	Answer each question accorindly but please rearrange for your username on ubuntu:
-/home/vasili/raw_data
+10.	Answer each question accorindly but please rearrange for your username on ubuntu:
+/home/Vasili/…(Vasili is my username: name of the folder of the directory mentioned 2 steps before)
 
-/home/vasili/final_results
-
-(just press enter, no need to type anything, it is set in the code)
+/home/Vasili/final_results
 
 (just press enter, no need to type anything, it is set in the code)
 
-/home/vasili/mouse_hisat2_index/grcm38_tran/genome_tran
+(just press enter, no need to type anything, it is set in the code)
 
-/home/vasili/mouse_reference/Mus_musculus.GRCm38.102.gtf
+/home/Vasili/mouse_hisat2_index/grcm38_tran/genome_tran
+
+/home/Vasili/mouse_reference/Mus_musculus.GRCm38.102.gtf
 
 (Usually 4 or 8, depends on your CPU, if you do not know just pick 4 but it will run slightly slower)
 
 Now use your real folder names for each sample and then after the colon put the group such as: sample1:A sample2:B ...
 
-13.	Now you can copy your full gene counts.csv to a directory on your pc of your liking by running this command (this will go to my documents foldier but change accordingly):
-cp ~/final_results/full_gene_counts.csv /mnt/c/Users/vasil/Documents/
+sample2:B, sample3:A, sample4:A, sample5:B, sample6:B, sample7:A, sample8:A
 
-**Differential expression analysis in anaconda prompt on Windows**
+
+11.	Now you can copy your full gene counts.csv to a directory on your pc of your liking by running this command (this will go to my documents foldier but change accordingly):
+
+cp ~/final_results/full_gene_counts.csv "/mnt/c/Users….."
+
+if you want specific files see below but I would save the SUBREAD output from the terminal at the end somewhere to keep 
+
+Differential expression analysis in anaconda prompt on Windows
 1.	Open anaconda prompt and create a new environment and install dependencies as below:
 conda create -n de_analysis -c conda-forge -y python=3.10 pandas numpy
 conda activate de_analysis
@@ -94,11 +100,13 @@ sample2,female
 ...
 3.	You can now run the script but would need to change line 18 to be what you have called your conditions in the metadata file for instance mine are male and female-simply just change male and female to your groups:
 contrast = ("condition", "male", "female")  
+
+You will also need to change the User settings from line 13-15 where your full gene counts, metadata file (which was previously created with sample/condition), and output
 4.	Now run the script in your python environment:
 cd  (your file directory with the script)
 python de_analysis.py
 
-**For analysis run Analysis.py, for matplotlib figures of volcano plots, and heatmaps.**
+For analysis run Analysis.py, for matplotlib figures of volcano plots, and heatmaps.
 For analysis, you will need your deseq2_results.csv, full_gene_counts.csv, and metadata.csv.
 Volcano plot
 -Can specific two-tiers of significance and log2foldchange if needed
