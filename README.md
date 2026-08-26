@@ -1,3 +1,5 @@
+# Download instructions and files for proper formatting
+
 FOR WINDOWS, follow each step carefully as presented
 
 1.	Open windows powershell with admin permissions and type:
@@ -19,13 +21,13 @@ conda activate rna_env
 
 Then copy each of these one at a time as it will need to download it, so may take a bit.
 
-# HISAT2 index (GRCm38 / mm10)
+HISAT2 index (GRCm38 / mm10)
 mkdir -p ~/mouse_hisat2_index
 cd ~/mouse_hisat2_index
 wget https://cloud.biohpc.swmed.edu/index.php/s/grcm38_tran/download -O grcm38_tran.tar.gz
 tar -xzf grcm38_tran.tar.gz
 
-# Gene annotation GTF
+Gene annotation GTF
 mkdir -p ~/mouse_reference
 cd ~/mouse_reference
 wget ftp://ftp.ensembl.org/pub/release-102/gtf/mus_musculus/Mus_musculus.GRCm38.102.gtf.gz
